@@ -1,166 +1,178 @@
-# from enum import Enum
-# from typing import Dict, Optional
-# from collections import deque
-# import time
-#
-#
-# class ZoneQueueException(Exception):
-#     """Base exception for ZoneQueue"""
-#     pass
-#
-# class QueueFullException(ZoneQueueException):
-#     """Raised when attempting to add to a full queue"""
-#     pass
-#
-# class InvalidZoneException(ZoneQueueException):
-#     """Raised when an invalid zone is specified"""
-#     pass
-#
-# class InvalidItemException(ZoneQueueException):
-#     """Raised when invalid item data is provided"""
-#     pass
-#
-# class ZoneType(Enum):
-#     RED = 3
-#     YELLOW = 2
-#     GREEN = 1
-#
-# class ZoneQueue:
-#     def __init__(self,
-#                  red_timeout: int = 200,
-#                  yellow_timeout: int = 1000,
-#                  green_timeout: int = 5000,
-#                  max_zone_size: Dict[ZoneType, int] = None):
-#         """
-#         Initialize queue zones and monitoring systems
-#
-#         Parameters:
-#         -----------
-#         red_timeout: int
-#             Timeout in milliseconds for RED zone items
-#         yellow_timeout: int
-#             Timeout in milliseconds for YELLOW zone items
-#         green_timeout: int
-#             Timeout in milliseconds for GREEN zone items
-#         max_zone_size: Dict[ZoneType, int]
-#             Maximum size for each zone
-#         """
-#         self.red_timeout = red_timeout
-#         self.yellow_timeout = yellow_timeout
-#         self.green_timeout = green_timeout
-#
-#         self.max_zone_size = max_zone_size or {
-#             ZoneType.RED: 100,
-#             ZoneType.YELLOW: 250,
-#             ZoneType.GREEN: 500
-#         }
-#
-#         self.queues = {
-#             ZoneType.RED: deque(maxlen=self.max_zone_size[ZoneType.RED]),
-#             ZoneType.YELLOW: deque(maxlen=self.max_zone_size[ZoneType.YELLOW]),
-#             ZoneType.GREEN: deque(maxlen=self.max_zone_size[ZoneType.GREEN])
-#         }
-#
-#         self.health_status = {
-#             'expired_items': 0,
-#             'total_items': 0,
-#             'total_load_percentage': 0,
-#             'zones': {
-#                 ZoneType.RED: {'avg_wait_time': 0, 'current_items': 0, 'items_processed': 0, 'load_percentage': 0},
-#                 ZoneType.YELLOW: {'avg_wait_time': 0, 'current_items': 0, 'items_processed': 0, 'load_percentage': 0},
-#                 ZoneType.GREEN: {'avg_wait_time': 0, 'current_items': 0, 'items_processed': 0, 'load_percentage': 0}
-#             }
-#         }
-#
-#     def enqueue(self, item: dict, zone: ZoneType) -> None:
-#         """
-#         Add item to specified zone
-#         """
-#         if zone not in ZoneType:
-#             raise InvalidZoneException(f"Invalid zone specified: {zone}")
-#
-#         if len(self.queues[zone]) >= self.max_zone_size[zone]:
-#             raise QueueFullException(f"Queue for zone {zone} is full.")
-#
-#
-#         if not all(key in item for key in ('id', 'type', 'data', 'timestamp')):
-#             raise InvalidItemException("Invalid item structure.")
-#
-#         self.queues[zone].append(item)
-#         self.health_status['total_items'] += 1
-#         self._update_health_status(zone)
-#
-#     def dequeue(self) -> Optional[dict]:
-#         """
-#         Remove and return highest priority item
-#
-#         Returns:
-#         --------
-#         dict or None
-#             Highest priority non-expired item, or None if queue is empty
-#         """
-#         current_time = time.time() * 1000
-#         for zone in sorted(ZoneType, key=lambda z: z.value, reverse=True):
-#             if self.queues[zone]:
-#                 item = self.queues[zone][0]
-#                 if current_time - item['timestamp'] <= self._get_timeout(zone):
-#                     self.queues[zone].popleft()
-#                     self.health_status['total_items'] -= 1
-#                     self.health_status['zones'][zone]['items_processed'] += 1
-#                     self._update_health_status(zone)
-#                     return item
-#
-#         return None
-#     def get_health_status(self) -> dict:
-#             """
-#             Return queue health metrics:
-#             - Items per zone
-#             - Average waiting time per zone
-#             - Number of expired items
-#             - Current load percentage per zone
-#             """
-#             return self.health_status
-#
-#     def cleanup_expired(self) -> list:
-#         """
-#         Remove and return list of expired items
-#         """
-#         expired_items = []
-#         current_time = time.time() * 1000
-#
-#         for zone in ZoneType:
-#             while self.queues[zone]:
-#                 item = self.queues[zone][0]
-#                 if current_time - item['timestamp'] > self._get_timeout(zone):
-#                     expired_items.append(self.queues[zone].popleft())
-#                     self.health_status['total_items'] -= 1
-#                     self.health_status['expired_items'] += 1
-#                     self._update_health_status(zone)
-#                 else:
-#                     break
-#
-#         return expired_items
-#
-#     def _get_timeout(self, zone: ZoneType) -> int:
-#         if zone == ZoneType.RED:
-#             return self.red_timeout
-#         elif zone == ZoneType.YELLOW:
-#             return self.yellow_timeout
-#         elif zone == ZoneType.GREEN:
-#             return self.green_timeout
-#
-#     def _update_health_status(self, zone: ZoneType) -> None:
-#         zone_queue = self.queues[zone]
-#         total_capacity = sum(self.max_zone_size.values())
-#         current_load = len(zone_queue) / self.max_zone_size[zone] * 100
-#
-#         self.health_status['zones'][zone]['current_items'] = len(zone_queue)
-#         self.health_status['zones'][zone]['load_percentage'] = current_load
-#
-#         total_load_percentage = sum(len(self.queues[z]) / self.max_zone_size[z] * 100 for z in ZoneType) / len(ZoneType)
-#         self.health_status['total_load_percentage'] = total_load_percentage
+from enum import Enum
+from typing import Dict, Optional
+from collections import deque
+import time
 
 
+class ZoneQueueException(Exception):
+    """Base exception for ZoneQueue"""
+    pass
+
+
+class QueueFullException(ZoneQueueException):
+    """Raised when attempting to add to a full queue"""
+    pass
+
+
+class InvalidZoneException(ZoneQueueException):
+    """Raised when an invalid zone is specified"""
+    pass
+
+
+class InvalidItemException(ZoneQueueException):
+    """Raised when invalid item data is provided"""
+    pass
+
+
+class ZoneType(Enum):
+    RED = 3
+    YELLOW = 2
+    GREEN = 1
+
+
+class ZoneQueue:
+    def __init__(self,
+                 red_timeout: int = 60,
+                 yellow_timeout: int = 300,
+                 green_timeout: int = 900,
+                 max_zone_size: Dict[ZoneType, int] = None):
+
+        self.red_timeout = red_timeout
+        self.yellow_timeout = yellow_timeout
+        self.green_timeout = green_timeout
+
+        self.max_zone_size = max_zone_size or {
+            ZoneType.RED: 100,
+            ZoneType.YELLOW: 250,
+            ZoneType.GREEN: 500
+        }
+
+        self.queues = {ZoneType.RED: deque(maxlen=self.max_zone_size[ZoneType.RED]),
+                       ZoneType.YELLOW: deque(maxlen=self.max_zone_size[ZoneType.YELLOW]),
+                       ZoneType.GREEN: deque(maxlen=self.max_zone_size[ZoneType.GREEN])
+                       }
+
+        self.health_status = {
+            'expired_items': 0,
+            'total_items': 0,
+            'total_load_percentage': 0.0,
+            'zones': {
+                ZoneType.RED: {'avg_wait_time': 0.0, 'current_items': 0, 'items_processed': 0, 'load_percentage': 0.0},
+                ZoneType.YELLOW: {'avg_wait_time': 0.0, 'current_items': 0, 'items_processed': 0,
+                                  'load_percentage': 0.0},
+                ZoneType.GREEN: {'avg_wait_time': 0.0, 'current_items': 0, 'items_processed': 0, 'load_percentage': 0.0}
+            }
+        }
+        """
+                Initialize queue zones and monitoring systems
+
+                Parameters:
+                -----------
+                red_timeout: int
+                    Timeout in milliseconds for RED zone items
+                yellow_timeout: int
+                    Timeout in milliseconds for YELLOW zone items
+                green_timeout: int
+                    Timeout in milliseconds for GREEN zone items
+                max_zone_size: Dict[ZoneType, int]
+                    Maximum size for each zone
+                """
+
+    def refresh_health_status(self, zone: ZoneType) -> None:
+        zone_queue = self.queues[zone]
+        current_load = len(zone_queue) / self.max_zone_size[zone] * 100
+
+        self.health_status['zones'][zone]['current_items'] = len(zone_queue)
+        self.health_status['zones'][zone]['load_percentage'] = current_load
+
+        total_load_percentage = sum(len(self.queues[zone]) / self.max_zone_size[zone] *
+                                    100 for zone in ZoneType) / len(ZoneType)
+        self.health_status['total_load_percentage'] = total_load_percentage
+
+    def enqueue(self, item: dict, zone: ZoneType) -> None:
+        """
+        Add item to specified zone
+        """
+        if not isinstance(zone, ZoneType):
+            raise InvalidZoneException  # Не распознано название зоны
+
+        if not isinstance(self.max_zone_size, dict):
+            raise InvalidZoneException
+
+        if len(self.queues[zone]) >= self.max_zone_size[zone]:
+            raise QueueFullException
+
+        if not isinstance(item, dict):
+            raise InvalidItemException  # Невалидная структура процесса
+
+        if ('id' not in item) or ('type' not in item) or ('data' not in item) or ('timestamp' not in item):
+            raise InvalidItemException
+
+        if ((not isinstance(item['id'], str)) or (item['type'] not in ['TRADE', 'RISK', 'REPORT']) or
+                (not isinstance(item['data'], dict)) or (not isinstance(item['timestamp'], float))):
+            raise InvalidItemException
+
+        self.queues[zone].append(item)
+        self.health_status['total_items'] += 1
+        self.refresh_health_status(zone)
+
+    def get_zone_timeout(self, zone: ZoneType) -> int:
+        if zone == ZoneType.RED:
+            return self.red_timeout
+        elif zone == ZoneType.YELLOW:
+            return self.yellow_timeout
+        elif zone == ZoneType.GREEN:
+            return self.green_timeout
+
+    def dequeue(self) -> Optional[dict]:
+        """
+        Remove and return highest priority item
+
+        Returns:
+        --------
+        dict or None
+            Highest priority non-expired item, or None if queue is empty
+        """
+        for zone in sorted(ZoneType, key=lambda z: z.value, reverse=True):
+            if self.queues[zone]:
+                self.health_status['total_items'] -= 1
+                self.health_status['zones'][zone]['items_processed'] += 1
+                self.refresh_health_status(zone)
+                return self.queues[zone].popleft()
+        return None
+
+    def get_health_status(self) -> dict:
+        """
+                    Return queue health metrics:
+                    - Items per zone
+                    - Average waiting time per zone
+                    - Number of expired items
+                    - Current load percentage per zone
+                    """
+        return self.health_status
+
+    def cleanup_expired(self) -> list:
+        """
+        Remove and return list of expired items
+        """
+        expired_items = []
+        current_time = time.time() * 1000
+
+        for zone in ZoneType:
+            while self.queues[zone]:
+                item = self.queues[zone][0]
+                if current_time - item['timestamp'] > self.get_zone_timeout(zone):
+                    expired_items.append(self.queues[zone].popleft())
+                    self.health_status['total_items'] -= 1
+                    self.health_status['expired_items'] += 1
+                    self.refresh_health_status(zone)
+                else:
+                    break
+
+        return expired_items
+
+
+# the second
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
 from enum import Enum
